@@ -1,0 +1,8 @@
+{
+  "appId": "am.volnovoy.bezum",
+  "appName": "Волновой безум",
+  "webDir": "www",
+  "backgroundColor": "#7CCDF5",
+  "ios": { "contentInset": "never", "scrollEnabled": false },
+  "android": { "backgroundColor": "#7CCDF5" }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "volnovoy-bezum",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Волновой безум: аркада про волны (обёртка Capacitor для iOS и Android)",
+  "scripts": {
+    "assets": "capacitor-assets generate --iconBackgroundColor '#3AA6EA' --iconBackgroundColorDark '#3AA6EA' --splashBackgroundColor '#3AA6EA' --splashBackgroundColorDark '#3AA6EA'",
+    "sync": "cap sync",
+    "ios": "cap open ios",
+    "android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/preferences": "^8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2"
+  },
+  "engines": { "node": ">=22" }
+}
