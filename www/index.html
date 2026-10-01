@@ -403,7 +403,7 @@ const HINTS = {
   gulls:   { i: '🕊️', t: 'Чайки! Прыгай коротко', s: 'Быстрый тап — низкий прыжок под чайками.' },
   tsunami: { i: '🌊', t: 'Девятый вал!', s: 'Нырни точно перед ним и держи палец, пока он целиком не пройдёт.' },
   pair:    { i: '🌊', t: 'Двойная волна', s: 'Приземлился — сразу прыгай снова.' },
-  combo:   { i: '🐟', t: 'Под водой тапни', s: 'Поднырни под большую и выпрыгни прямо над следующей.' },
+  popout:  { i: '🐟', t: 'Большая, за ней средняя', s: 'Нырни под большую. Как пройдёт — отпусти палец и зажми снова: выпрыгнешь над средней.' },
   dolphin: { i: '🐬', t: 'Дельфиний прыжок', s: 'Нырни, а под водой тапни — вылетишь очень высоко.' },
 };
 
@@ -747,9 +747,10 @@ function computeAb() {
 }
 const AIR_MIN = 0.35, AIR_REGEN = 0.4;
 const SWIM_D = 14;   // how deep you float at rest (waterline at the belly)   // breath needed to start a dive; refill per second at the surface
+const TAP_GRACE = 0.15;   // after the finger lifts under water you stay down this long, so lift-and-tap still counts as a tap under water
 function newPlayer() {
   return { x: PLAYER_X, y: SURF + SWIM_D, vy: 0, vx: 0, state: 'swim', holding: false, holdT: 0, boosted: false, forced: false, rmax: RMAX[0],
-    diveT: 0, diveCd: 0, diveHold: false, fast: false, punchT: 0, dash: false, air: 1, noAirT: -9, tilt: 0, flip: 0, flipOn: false, anim: 0, lastDive: -9, bubT: 0 };
+    diveT: 0, diveCd: 0, diveHold: false, fast: false, punchT: 0, dash: false, air: 1, noAirT: -9, tilt: 0, flip: 0, flipOn: false, anim: 0, lastDive: -9, upT: -9, bubT: 0 };
 }
 function newWorld(demo) {
   return {
@@ -807,6 +808,7 @@ function jumpOut() {
 function release() {
   const p = W.p;
   p.holding = false; p.diveHold = false;
+  if (p.state === 'dive') p.upT = W.t;
   if (p.state === 'air' && p.boosted && !p.forced && p.vy < 0) {
     const r = SURF - p.y;
     const A = Math.max(HOP, r + 10);
@@ -877,7 +879,7 @@ function updatePlayer(dt) {
     tiltT = p.diveT < 0.22 ? 1.95 : 1.57;
     p.bubT -= dt;
     if (p.bubT <= 0) { p.bubT = 0.07; bubble(p.x + rand(-10, 30), p.y - 10); }
-    if (p.air <= 0 || (W.demo && p.diveT >= 1) || (!p.diveHold && p.diveT >= 0.55)) { p.state = 'swim'; p.vy = -650; p.diveCd = 0.25; }
+    if (p.air <= 0 || (W.demo && p.diveT >= 1) || (!p.diveHold && p.diveT >= 0.55 && W.t - p.upT >= TAP_GRACE)) { p.state = 'swim'; p.vy = -650; p.diveCd = 0.25; }
   } else if (p.state === 'hit') {
     p.vy += G * 0.6 * dt; p.y += p.vy * dt; p.x += p.vx * dt; p.vx *= Math.pow(0.4, dt);
     if (p.y > SURF + 50) { p.y = SURF + 50; p.vy *= -0.25; }
@@ -940,8 +942,9 @@ function waveRoute(k) {
   if (j && d) return chance(0.5) ? 'jump' : 'dive';
   return j ? 'jump' : 'dive';
 }
-// Seconds between the fronts of paired waves, and the Ninth-wave dive window model (calibrated by the test bot)
-const PAIR = { mm: 0.8, bm: 0.82 };
+// Seconds between the fronts of paired waves, and the Ninth-wave dive window model (calibrated by the test bot).
+// bm: once the big wave has passed there are ~0.3–0.5 s left to press and hold out of the dive over the medium one.
+const PAIR = { mm: 0.8, bm: 1.15 };
 const pairMM = () => PAIR.mm + 0.12 * Math.exp(-Math.max(0, W.dist - 500) / 600);
 // Measured: the Ninth-wave dive window ≈ breath − 0.764·width/speed. Its width grows with speed, so without upgrades it stays ~0.16 s.
 const TCAL = { a: 0.764, c: 0.02, min: 0.12 };
@@ -964,7 +967,7 @@ const PATS = [
   { id: 'SB', at: 535, wt: (d) => 2 + Math.min(1, Math.max(0, d - 1500) / 1200), ok: () => canJump('B') || canDive('B'), extra: 0.2,
     build: (x) => { const a = wave('S', x); const x2 = x + a.w + spd() * 0.85; const b = wave('B', x2); rewardCoins(b, waveRoute('B')); return [x2 - x + b.w, a]; } },
   { id: 'BJ', at: 565, wt: () => 2, ok: () => canJump('B'), extra: 0.2, build: (x) => { const o = wave('B', x); jelly(x + o.w * o.p - 30); rewardCoins(o, 'jump'); return [o.w, o]; } },
-  { id: 'BM', at: 600, wt: (d) => 2 + Math.min(1.5, Math.max(0, d - 1500) / 1000), hint: 'combo', ok: () => canJump('B') || canDive('B'), extra: 0.2,
+  { id: 'BM', at: 600, wt: (d) => 2 + Math.min(1.5, Math.max(0, d - 1500) / 1000), hint: 'popout', ok: () => canJump('B') || canDive('B'), extra: 0.2,
     build: (x) => { const a = wave('B', x); const x2 = x + spd() * PAIR.bm; const b = wave('M', x2); rewardCoins(b, 'jump'); return [x2 - x + b.w, a]; } },
   { id: 'BB', at: 620, wt: () => 1.4, ok: canBB, dive: true, extra: 0.3,
     build: (x) => { const a = wave('B', x); const x2 = x + a.w + spd() * BB_GAP; const b = wave('B', x2); rewardCoins(b, 'dive'); return [x2 - x + b.w, a]; } },
