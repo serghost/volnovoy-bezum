@@ -2794,6 +2794,10 @@ function init() {
   wire();
   if (!started) { started = true; last = performance.now(); requestAnimationFrame(frame); }
   if (IS_NATIVE) nativeLoad(); else cloud.init();
+  // the store apps already have every file on the device; the site gets offline play from sw.js
+  if (!IS_NATIVE && 'serviceWorker' in navigator && window.isSecureContext) {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
 }
 init();
 // test/debug handle
